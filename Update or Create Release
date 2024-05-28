@@ -84,4 +84,4 @@ jobs:
           git config --global user.name "hsl971121"
           
           git tag -a ${{ env.CURRENT_DATE }} -m "${{ github.event.head_commit.message }}"
-          git push origin ${{ env.CURRENT_DATE }} 이거 깃허브에 올릴건데 주요 기능 설명
+          git push origin ${{ env.CURRENT_DATE }}
