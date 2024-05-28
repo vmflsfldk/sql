@@ -1,0 +1,87 @@
+name: Update or Create Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update_or_create_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Get the current date
+        id: date
+        run: echo "CURRENT_DATE=$(TZ='Asia/Seoul' date +'%Y%m%d')" >> $GITHUB_ENV
+
+      - name: Check if release exists
+        id: check_and_create_release
+        run: |
+          echo "Checking if release exists for tag: ${{ env.CURRENT_DATE }}"
+          RELEASE_RESPONSE=$(curl -s \
+            -H "Authorization: token ${{ secrets.TEST }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ env.CURRENT_DATE }}")
+          RELEASE_ID=$(echo $RELEASE_RESPONSE | jq -r '.id // empty')
+          if [ -z "$RELEASE_ID" ]; then
+            echo "exists=false" >> $GITHUB_ENV
+          else
+            echo "exists=true" >> $GITHUB_ENV
+            echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+          fi
+        env:
+          CURRENT_DATE: ${{ env.CURRENT_DATE }}
+
+      - name: Get previous release body
+        id: get_previous_release
+        if: env.exists == 'true'
+        run: |
+          PREVIOUS_RELEASE_BODY=$(curl -s -H "Authorization: token ${{ secrets.TEST }}" "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -r '.body')
+          echo "PREVIOUS_RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$PREVIOUS_RELEASE_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Update release body with new commit message
+        if: env.exists == 'true'
+        run: |
+          # Get the current time
+          CURRENT_TIME=$(TZ='Asia/Seoul' date "+%Y-%m-%d %H:%M")
+    
+          # Combine the old body with the new commit message prefixed by the current time
+          OLD_BODY="${PREVIOUS_RELEASE_BODY}"
+          NEW_BODY=$(echo -e "${OLD_BODY}\n\n${CURRENT_TIME}: ${{ github.event.head_commit.message }}" | jq -Rs .)
+    
+          echo "Updating release with ID: ${{ env.RELEASE_ID }}"
+    
+          # Make the PATCH request to update the release body
+          curl -s \
+            -X PATCH \
+            -H "Authorization: token ${{ secrets.TEST }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${{ env.RELEASE_ID }}" \
+            -d "{\"body\": $NEW_BODY}"
+        env:
+          PREVIOUS_RELEASE_BODY: ${{ env.PREVIOUS_RELEASE_BODY }}
+
+      - name: Create a new release
+        if: env.exists != 'true'
+        run: |
+          echo "Release does not exist. Creating a new release..."
+          NEW_BODY=$(echo -e "${{ github.event.head_commit.message }}" | jq -Rs .)
+          RESPONSE=$(curl -s \
+            -X POST \
+            -H "Authorization: token ${{ secrets.TEST }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            -d "{\"tag_name\": \"${{ env.CURRENT_DATE }}\",\"name\": \"${{ env.CURRENT_DATE }}\",\"body\": $NEW_BODY,\"draft\": false,\"prerelease\": false}")
+          echo "Response: $RESPONSE"
+          RELEASE_ID=$(echo $RESPONSE | jq -r .id)
+          echo "Created release: $RELEASE_ID"
+          # Set git user for tagging
+          git config --global user.email "hsl971121SG@gmail.com"
+          git config --global user.name "hsl971121"
+          
+          git tag -a ${{ env.CURRENT_DATE }} -m "${{ github.event.head_commit.message }}"
+          git push origin ${{ env.CURRENT_DATE }} 이거 깃허브에 올릴건데 주요 기능 설명
