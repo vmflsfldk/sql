@@ -31,10 +31,15 @@ jobs:
           git diff --name-only HEAD~1 HEAD > changed_files.txt
         fi
 
+    - name: Check if changed files exist
+      id: check_changed_files
+      run: echo "::set-output name=files_present::$(if [ -s changed_files.txt ]; then echo true; else echo false; fi)"
+
     - name: Create Release
       id: create_release
+      if: steps.check_changed_files.outputs.files_present == 'true'
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.LHS }}
       run: |
         TAG_NAME="release-$(date +'%Y%m%d%H%M%S')-$(git rev-parse --short HEAD)"
         CHANGED_FILES=$(cat changed_files.txt)
@@ -46,8 +51,9 @@ jobs:
         $CHANGED_FILES"
 
     - name: Upload Changed Files
+      if: steps.check_changed_files.outputs.files_present == 'true'
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.LHS }}
       run: |
         TAG_NAME=$(gh release view --json tagName -q .tagName)
         for file in $(cat changed_files.txt); do
