@@ -23,20 +23,25 @@ jobs:
     - name: Create Release
       id: create_release
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.LHS }}
       run: |
-        TAG_NAME="release-$(date +'%Y%m%d%H%M%S')-$(git rev-parse --short HEAD)"
+        TAG_NAME="release-$(date +'%Y%m%d%H')-$(git rev-parse --short HEAD)"
         gh release create "$TAG_NAME" --title "Release $TAG_NAME" --notes "Automated release created by GitHub Actions."
 
     - name: Get changed files
       id: changed_files
       run: |
         git fetch origin main
-        git diff --name-only HEAD^ HEAD > changed_files.txt
+        if [ $(git rev-list --count HEAD) -eq 1 ]; then
+          echo "Only one commit in history, getting all files."
+          git diff --name-only HEAD > changed_files.txt
+        else
+          git diff --name-only HEAD~1 HEAD > changed_files.txt
+        fi
 
     - name: Upload Changed Files
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.LHS }}
       run: |
         TAG_NAME=$(gh release view --json tagName -q .tagName)
         for file in $(cat changed_files.txt); do
