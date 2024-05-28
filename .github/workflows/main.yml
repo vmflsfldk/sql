@@ -3,7 +3,7 @@ name: Upload Changed Files to Release
 on:
   push:
     branches:
-      - main  # main 브랜치에 푸시될 때 워크플로 실행
+      - main
 
 jobs:
   release:
