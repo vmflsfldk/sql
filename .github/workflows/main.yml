@@ -30,6 +30,10 @@ jobs:
         else
           git diff --name-only HEAD~1 HEAD > changed_files.txt
         fi
+        
+    - name: cat changed_files.txt
+      id:  cat changed_files.txt
+      run: |
         cat changed_files.txt
 
     - name: Check if changed files exist
