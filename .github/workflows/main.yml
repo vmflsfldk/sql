@@ -20,14 +20,6 @@ jobs:
         sudo apt update
         sudo apt install gh -y
 
-    - name: Create Release
-      id: create_release
-      env:
-        GITHUB_TOKEN: ${{ secrets.LHS }}
-      run: |
-        TAG_NAME="release-$(date +'%Y%m%d%H')-$(git rev-parse --short HEAD)"
-        gh release create "$TAG_NAME" --title "Release $TAG_NAME" --notes "Automated release created by GitHub Actions."
-
     - name: Get changed files
       id: changed_files
       run: |
@@ -38,6 +30,18 @@ jobs:
         else
           git diff --name-only HEAD~1 HEAD > changed_files.txt
         fi
+
+    - name: Create Release
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.LHS }}
+        CHANGED_FILES: $(cat changed_files.txt)
+      run: |
+        TAG_NAME="release-$(date +'%Y%m%d%H')-$(git rev-parse --short HEAD)"
+        gh release create "$TAG_NAME" --title "Release $TAG_NAME" --notes "Automated release created by GitHub Actions.
+        
+        Changed files:
+        $CHANGED_FILES"
 
     - name: Upload Changed Files
       env:
