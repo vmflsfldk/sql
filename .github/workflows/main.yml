@@ -32,9 +32,9 @@ jobs:
         fi
         
     - name: cat changed_files.txt
-      id:  cat changed_files.txt
+      id: cat_changed_files
       run: |
-        cat changed_files.txt
+          cat changed_files.txt
 
     - name: Check if changed files exist
       id: check_changed_files
